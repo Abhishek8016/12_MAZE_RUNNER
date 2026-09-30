@@ -1,40 +1,37 @@
 import pygame
-from game.maze import CELL
-
-SPEED = 3
 
 class Player:
-    def __init__(self, r, c):
-        self.r = r
-        self.c = c
-        x = c*CELL + CELL//2
-        y = r*CELL + CELL//2
-        self.rect = pygame.Rect(x-10, y-10, 20, 20)
-        self.color = (60,120,220)
+    def __init__(self, x, y, cell_size):
+        self.grid_x = x
+        self.grid_y = y
+        self.cell_size = cell_size
 
-    def move(self, keys, walls, rows, cols):
-        dx, dy = 0, 0
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]: dx = -SPEED
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]: dx = SPEED
-        if keys[pygame.K_UP] or keys[pygame.K_w]: dy = -SPEED
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]: dy = SPEED
+    def move(self, dx, dy, maze):
+        """
+        Moves the player in grid coordinates (dx, dy) only if 
+        there is no wall blocking the path in the maze.
+        """
+        current_cell = maze.grid[self.grid_y][self.grid_x]
+        
+        # Check Direction and Wall status before moving
+        if dx == 0 and dy == -1: # Move Up
+            if not current_cell.walls['top']:
+                self.grid_y += dy
+        elif dx == 0 and dy == 1: # Move Down
+            if not current_cell.walls['bottom']:
+                self.grid_y += dy
+        elif dx == -1 and dy == 0: # Move Left
+            if not current_cell.walls['left']:
+                self.grid_x += dx
+        elif dx == 1 and dy == 0: # Move Right
+            if not current_cell.walls['right']:
+                self.grid_x += dx
 
-        # Wall-aware movement (check cell boundaries)
-        new_rect = self.rect.move(dx, 0)
-        if not self._hits_wall(new_rect, walls, rows, cols):
-            self.rect = new_rect
-        new_rect = self.rect.move(0, dy)
-        if not self._hits_wall(new_rect, walls, rows, cols):
-            self.rect = new_rect
-
-    def _hits_wall(self, rect, walls, rows, cols):
-        # Check corners of player rect against wall segments
-        for px, py in [(rect.left, rect.top),(rect.right-1,rect.top),(rect.left,rect.bottom-1),(rect.right-1,rect.bottom-1)]:
-            cr = py // CELL
-            cc = px // CELL
-            if cr < 0 or cr >= rows or cc < 0 or cc >= cols:
-                return True
-        return False
-
-    def draw(self, screen):
-        pygame.draw.ellipse(screen, self.color, self.rect)
+    def draw(self, surface):
+        """Draws the ball centered inside the current maze cell."""
+        center_x = self.grid_x * self.cell_size + self.cell_size // 2
+        center_y = self.grid_y * self.cell_size + self.cell_size // 2
+        radius = self.cell_size // 3
+        
+        # Draw player ball
+        pygame.draw.circle(surface, (230, 50, 50), (center_x, center_y), radius)

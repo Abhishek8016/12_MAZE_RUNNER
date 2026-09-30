@@ -1,37 +1,85 @@
+import pygame
 import random
 
-CELL = 40  # cell size in pixels
+class Cell:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.walls = {'top': True, 'right': True, 'bottom': True, 'left': True}
+        self.visited = False
 
-def generate_maze(cols, rows):
-    """Recursive backtracker maze generation. Returns 2D grid of walls."""
-    visited = [[False]*cols for _ in range(rows)]
-    # walls: each cell has [N, S, E, W]
-    walls = [[[True,True,True,True] for _ in range(cols)] for _ in range(rows)]
-    
-    def neighbors(r, c):
-        dirs = [(-1,0,0,1),(1,0,1,0),(0,1,2,3),(0,-1,3,2)]  # dr,dc,wall_dir,opp_dir
-        result = []
-        for dr,dc,wd,od in dirs:
-            nr,nc = r+dr,c+dc
-            if 0<=nr<rows and 0<=nc<cols and not visited[nr][nc]:
-                result.append((nr,nc,wd,od))
-        return result
+    def draw(self, surface, cell_size):
+        x = self.x * cell_size
+        y = self.y * cell_size
+        color = (255, 255, 255)
+        thickness = 2
 
-    stack = [(0,0)]
-    visited[0][0] = True
-    while stack:
-        r,c = stack[-1]
-        nbrs = neighbors(r,c)
-        if nbrs:
-            nr,nc,wd,od = random.choice(nbrs)
-            walls[r][c][wd] = False
-            walls[nr][nc][od] = False
-            visited[nr][nc] = True
-            stack.append((nr,nc))
-        else:
-            stack.pop()
-    return walls
+        if self.walls['top']:
+            pygame.draw.line(surface, color, (x, y), (x + cell_size, y), thickness)
+        if self.walls['right']:
+            pygame.draw.line(surface, color, (x + cell_size, y), (x + cell_size, y + cell_size), thickness)
+        if self.walls['bottom']:
+            pygame.draw.line(surface, color, (x + cell_size, y + cell_size), (x, y + cell_size), thickness)
+        if self.walls['left']:
+            pygame.draw.line(surface, color, (x, y + cell_size), (x, y), thickness)
 
-def cell_rect(r, c, import_pygame=None):
-    import pygame
-    return pygame.Rect(c*CELL, r*CELL, CELL, CELL)
+
+class Maze:
+    def __init__(self, cols, rows, cell_size):
+        self.cols = cols
+        self.rows = rows
+        self.cell_size = cell_size
+        self.grid = [[Cell(x, y) for x in range(cols)] for y in range(rows)]
+        self.generate_maze()
+
+    def generate_maze(self):
+        stack = []
+        current = self.grid[0][0]
+        current.visited = True
+
+        while True:
+            neighbors = self.get_unvisited_neighbors(current)
+            if neighbors:
+                next_cell, direction = random.choice(neighbors)
+                self.remove_walls(current, next_cell, direction)
+                stack.append(current)
+                current = next_cell
+                current.visited = True
+            elif stack:
+                current = stack.pop()
+            else:
+                break
+
+    def get_unvisited_neighbors(self, cell):
+        neighbors = []
+        x, y = cell.x, cell.y
+
+        if y > 0 and not self.grid[y - 1][x].visited:
+            neighbors.append((self.grid[y - 1][x], 'top'))
+        if x < self.cols - 1 and not self.grid[y][x + 1].visited:
+            neighbors.append((self.grid[y][x + 1], 'right'))
+        if y < self.rows - 1 and not self.grid[y + 1][x].visited:
+            neighbors.append((self.grid[y + 1][x], 'bottom'))
+        if x > 0 and not self.grid[y][x - 1].visited:
+            neighbors.append((self.grid[y][x - 1], 'left'))
+
+        return neighbors
+
+    def remove_walls(self, current, next_cell, direction):
+        if direction == 'top':
+            current.walls['top'] = False
+            next_cell.walls['bottom'] = False
+        elif direction == 'right':
+            current.walls['right'] = False
+            next_cell.walls['left'] = False
+        elif direction == 'bottom':
+            current.walls['bottom'] = False
+            next_cell.walls['top'] = False
+        elif direction == 'left':
+            current.walls['left'] = False
+            next_cell.walls['right'] = False
+
+    def draw(self, surface):
+        for row in self.grid:
+            for cell in row:
+                cell.draw(surface, self.cell_size)
